@@ -1,27 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define MAX_LINE 256
 #define MAX_SENSOR_ID 20
 #define MAX_TYPE 20
 #define MAX_STATUS 10
 
-// =======================
 // Estrutura de uma leitura
-// =======================
 typedef struct {
     char sensor_id[MAX_SENSOR_ID];
     char data[11];     // YYYY-MM-DD
     char hora[9];      // HH:MM:SS
     char tipo[MAX_TYPE];
     float valor;
-    char status[MAX_STATUS];
+    char status[MAX_STATUS]; // OK, ALERTA ou CRITICO
 } Leitura;
 
-// =======================
+// ===============================
+// CRUCIAL achar algum jeito de calcular o tempo
+// ===============================
+
 // Função de parsing
-// =======================
 int parse_linha(char *linha, Leitura *l) {
     return sscanf(linha, "%s %s %s %s %f status %s",
                   l->sensor_id,
@@ -32,9 +33,7 @@ int parse_linha(char *linha, Leitura *l) {
                   l->status);
 }
 
-// =======================
 // Leitura do arquivo
-// =======================
 Leitura* ler_arquivo(const char *nome_arquivo, int *total_linhas) {
     FILE *fp = fopen(nome_arquivo, "r");
     if (!fp) {
@@ -72,11 +71,14 @@ Leitura* ler_arquivo(const char *nome_arquivo, int *total_linhas) {
     return leituras;
 }
 
-// =======================
-// MAIN
-// =======================
 int main(int argc, char *argv[]) {
 
+    double soma_temp = 0;
+    double soma_quad = 0;
+    int count_temp = 0;
+    int alertas = 0;
+    double soma_energia = 0;
+    
     if (argc < 2) {
         printf("Uso: %s <arquivo.log>\n", argv[0]);
         return 1;
@@ -89,21 +91,36 @@ int main(int argc, char *argv[]) {
 
     printf("Total de linhas lidas: %d\n", total_linhas);
 
-    // =======================
     // Processamento sequencial
-    // =======================
     for (int i = 0; i < total_linhas; i++) {
         // TODO:
         // Aqui você vai:
         // - contar alertas
+        if(strcmp(leituras[i].status, "ALERTA") == 0 || strcmp(leituras[i].status, "CRITICO") == 0) {
+            alertas += 1;
+        }
         // - somar energia
+        if(strcmp(leituras[i].tipo, "energia") == 0) {
+            soma_energia += leituras[i].valor;
+        }
         // - calcular média por sensor
+        if(strcmp(leituras[i].tipo, "temperatura") == 0) {
+            soma_temp += leituras[i].valor;
+            count_temp += 1;
+        }
+            
+        
         // - preparar desvio padrão
+        
     }
+    
+    double media = soma_temp / count_temp;
+    printf("Média das temperaturas por sensor:  %.2f\n", media);
 
-    // =======================
+    // Calcular o desvio padrao
+    
+
     // Liberação de memória
-    // =======================
     free(leituras);
 
     return 0;
