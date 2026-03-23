@@ -119,12 +119,14 @@ int main(int argc, char *argv[]) {
     printf("Média das temperaturas por sensor:  %.2f\n", media);
 
     // Calcular o desvio padrao
-    double soma_quadrados = 0;
+    double soma_quadrado = 0;
     for (int i = 0; i < total_linhas; i++) {
-        soma_quadrados += pow(leituras[i].valor - media, 2);
+        if (strcmp(leituras[i].tipo, "temperatura") == 0) {
+            soma_quadrado += pow(leituras[i].valor - media, 2);
+        }
     }
 
-    desvio_padrao = sqrt(soma_quadrados / count_temp);
+    double desvio_padrao = sqrt(soma_quadrado / count_temp);
         
 
     // Liberação de memória
