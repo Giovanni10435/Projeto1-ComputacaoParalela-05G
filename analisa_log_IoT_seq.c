@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
     int count_temp = 0;
     int alertas = 0;
     double soma_energia = 0;
+    double desvio_padrao = 0;
     
     if (argc < 2) {
         printf("Uso: %s <arquivo.log>\n", argv[0]);
@@ -118,7 +119,15 @@ int main(int argc, char *argv[]) {
     printf("Média das temperaturas por sensor:  %.2f\n", media);
 
     // Calcular o desvio padrao
-    
+    double soma_quadrado = 0;
+    for (int i = 0; i < total_linhas; i++) {
+        if (strcmp(leituras[i].tipo, "temperatura") == 0) {
+            soma_quadrado += pow(leituras[i].valor - media, 2);
+        }
+    }
+
+    double desvio_padrao = sqrt(soma_quadrado / count_temp);
+        
 
     // Liberação de memória
     free(leituras);
