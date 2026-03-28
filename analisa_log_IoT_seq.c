@@ -2,11 +2,23 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #define MAX_LINE 256
 #define MAX_SENSOR_ID 20
 #define MAX_TYPE 20
 #define MAX_STATUS 10
+#define MAX_SENSORES 100
+
+typedef struct {
+    char id[MAX_SENSOR_ID];
+    double soma;
+    double soma_quad;
+    int count;
+} EstatSensor;
+
+EstatSensor sensores[MAX_SENSORES];
+int total_sensores = 0;
 
 // Estrutura de uma leitura
 typedef struct {
@@ -67,8 +79,26 @@ Leitura* ler_arquivo(const char *nome_arquivo, int *total_linhas) {
     return leituras;
 }
 
+int get_sensor_index(char *id) {
+
+    for (int i = 0; i < total_sensores; i++) {
+        if (strcmp(sensores[i].id, id) == 0)
+            return i;
+    }
+
+    // novo sensor
+    strcpy(sensores[total_sensores].id, id);
+    sensores[total_sensores].soma = 0;
+    sensores[total_sensores].soma_quad = 0;
+    sensores[total_sensores].count = 0;
+
+    total_sensores++;
+    return total_sensores - 1;
+}
+
 int main(int argc, char *argv[]) {
 
+    clock_t inicio = clock();
     double soma_temp = 0;
     double soma_quad = 0;
     int count_temp = 0;
@@ -88,6 +118,8 @@ int main(int argc, char *argv[]) {
 
     printf("Total de linhas lidas: %d\n", total_linhas);
 
+    
+
     // Processamento sequencial
     for (int i = 0; i < total_linhas; i++) {
         // Contar alertas
@@ -100,25 +132,61 @@ int main(int argc, char *argv[]) {
         }
         // Calcular média por sensor
         if(strcmp(leituras[i].tipo, "temperatura") == 0) {
-            soma_temp += leituras[i].valor;
-            count_temp += 1;
-        }
+            int idx = get_sensor_index(leituras[i].sensor_id);
+
+            sensores[idx].soma += leituras[i].valor;
+            sensores[idx].count += 1;
+}
     }
-    
-    double media = soma_temp / count_temp;
-    printf("Média das temperaturas por sensor:  %.2f\n", media);
+
+    printf("Total de alertas: %d\n", alertas);
+    printf("Consumo total de energia: %.2f\n", soma_energia);
 
     // Calcular o desvio padrao
     double soma_quadrado = 0;
+    
+    char sensor_instavel[MAX_SENSOR_ID] = "";
+    double maior_desvio = 0;
+
     for (int i = 0; i < total_linhas; i++) {
-        if (strcmp(leituras[i].tipo, "temperatura") == 0) {
-            soma_quadrado += pow(leituras[i].valor - media, 2);
+    if (strcmp(leituras[i].tipo, "temperatura") == 0) {
+        int idx = get_sensor_index(leituras[i].sensor_id);
+
+        double media_sensor = sensores[idx].soma / sensores[idx].count;
+        double diff = leituras[i].valor - media_sensor;
+
+        sensores[idx].soma_quad += diff * diff;
+    }
+}
+    
+
+    desvio_padrao = 0;
+
+    for (int i = 0; i < total_sensores; i++) {
+        double media_sensor = sensores[i].soma / sensores[i].count;
+        double desvio = sqrt(sensores[i].soma_quad / sensores[i].count);
+
+        if (desvio > maior_desvio) {
+            maior_desvio = desvio;
+            strcpy(sensor_instavel, sensores[i].id);
         }
     }
 
-    double desvio_padrao = sqrt(soma_quadrado / count_temp);
+    printf("Sensor mais instável: %s (Desvio padrão: %.2f)\n", sensor_instavel, maior_desvio);
+
+    printf("\nMédias por sensor (até 10):\n");
+
+    for (int i = 0; i < total_sensores && i < 10; i++) {
+        double media_sensor = sensores[i].soma / sensores[i].count;
+        printf("%s -> %.2f\n", sensores[i].id, media_sensor);
+    }
     
     // Liberação de memória
     free(leituras);
+
+    clock_t fim = clock();
+    double tempo = (double)(fim - inicio) / CLOCKS_PER_SEC;
+    printf("Tempo de execução: %.2f segundos\n", tempo);
+
     return 0;
 }
