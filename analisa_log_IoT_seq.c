@@ -13,24 +13,20 @@ typedef struct {
     char sensor_id[MAX_SENSOR_ID];
     char data[11];     // YYYY-MM-DD
     char hora[9];      // HH:MM:SS
-    char tipo[MAX_TYPE];
-    float valor;
+    char tipo[MAX_TYPE];    // Tipo do Sensor (temperatura, energia, etc.)
+    float valor;            // Valor atribuído ao tipo no arquivo, exemplo -> Tipo: Temperatura; Valor: 28°
     char status[MAX_STATUS]; // OK, ALERTA ou CRITICO
 } Leitura;
-
-// ===============================
-// CRUCIAL achar algum jeito de calcular o tempo
-// ===============================
 
 // Função de parsing
 int parse_linha(char *linha, Leitura *l) {
     return sscanf(linha, "%s %s %s %s %f status %s",
-                  l->sensor_id,
-                  l->data,
-                  l->hora,
-                  l->tipo,
-                  &l->valor,
-                  l->status);
+        l->sensor_id,
+        l->data,
+        l->hora,
+        l->tipo,
+        &l->valor,
+        l->status);
 }
 
 // Leitura do arquivo
@@ -94,25 +90,19 @@ int main(int argc, char *argv[]) {
 
     // Processamento sequencial
     for (int i = 0; i < total_linhas; i++) {
-        // TODO:
-        // Aqui você vai:
-        // - contar alertas
+        // Contar alertas
         if(strcmp(leituras[i].status, "ALERTA") == 0 || strcmp(leituras[i].status, "CRITICO") == 0) {
             alertas += 1;
         }
-        // - somar energia
+        // Somar energia
         if(strcmp(leituras[i].tipo, "energia") == 0) {
             soma_energia += leituras[i].valor;
         }
-        // - calcular média por sensor
+        // Calcular média por sensor
         if(strcmp(leituras[i].tipo, "temperatura") == 0) {
             soma_temp += leituras[i].valor;
             count_temp += 1;
         }
-            
-        
-        // - preparar desvio padrão
-        
     }
     
     double media = soma_temp / count_temp;
@@ -127,10 +117,8 @@ int main(int argc, char *argv[]) {
     }
 
     double desvio_padrao = sqrt(soma_quadrado / count_temp);
-        
-
+    
     // Liberação de memória
     free(leituras);
-
     return 0;
 }
