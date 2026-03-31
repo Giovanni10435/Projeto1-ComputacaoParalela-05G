@@ -40,16 +40,18 @@ typedef struct {
     int fim;
 } ThreadData;
 
+// Função de parsing
 int parse_linha(char *linha, Leitura *l) {
     return sscanf(linha, "%s %s %s %s %f status %s",
         l->sensor_id, 
-        l->data, 
-        l->hora, 
-        l->tipo, 
-        &l->valor, 
-        l->status);
+        l->data,    
+        l->hora,    
+        l->tipo,    
+        &l->valor,  
+        l->status);   
 }
 
+// Leitura do arquivo
 Leitura* ler_arquivo(const char *nome_arquivo, int *total_linhas) {
     FILE *fp = fopen(nome_arquivo, "r");
     if (!fp) { 
@@ -92,21 +94,28 @@ int get_sensor_index(char *id) {
 void* processar_leituras(void* arg) {
     ThreadData *data = (ThreadData*)arg;
     for (int i = data->inicio; i < data->fim; i++) {
-        pthread_mutex_lock(&lock);
+
         if(strcmp(data->leituras[i].status, "ALERTA") == 0 || strcmp(data->leituras[i].status, "CRITICO") == 0) {
+            pthread_mutex_lock(&lock); 
             alertas += 1;
+            pthread_mutex_unlock(&lock); 
         }
+
         if(strcmp(data->leituras[i].tipo, "energia") == 0) {
+            pthread_mutex_lock(&lock); 
             soma_energia += data->leituras[i].valor;
+            pthread_mutex_unlock(&lock); 
         }
+
         if(strcmp(data->leituras[i].tipo, "temperatura") == 0) {
+            pthread_mutex_lock(&lock); 
             int idx = get_sensor_index(data->leituras[i].sensor_id);
             if (idx != -1) {
                 sensores[idx].soma += data->leituras[i].valor;
                 sensores[idx].count += 1;
             }
+            pthread_mutex_unlock(&lock);
         }
-        pthread_mutex_unlock(&lock);
     }
     return NULL;
 }
@@ -118,9 +127,11 @@ void* calcular_variancia(void* arg) {
             pthread_mutex_lock(&lock);
             int idx = get_sensor_index(data->leituras[i].sensor_id);
             if (idx != -1) {
-                double media_sensor = sensores[idx].soma / sensores[idx].count;
-                double diff = data->leituras[i].valor - media_sensor;
-                sensores[idx].soma_quad += diff * diff;
+                if (sensores[idx].count > 0) { // ALTERADO
+                    double media_sensor = sensores[idx].soma / sensores[idx].count;
+                    double diff = data->leituras[i].valor - media_sensor;
+                    sensores[idx].soma_quad += diff * diff;
+                }
             }
             pthread_mutex_unlock(&lock);
         }
@@ -140,14 +151,17 @@ int main(int argc, char *argv[]) {
 
     int total_linhas = 0;
     Leitura *leituras = ler_arquivo(nome_arquivo, &total_linhas);
+    printf("\n-----VERSÃO PARALELA-----\n\n");
+
     printf("Total de linhas lidas: %d\n", total_linhas);
 
-    clock_t inicio_proc = clock();
-    pthread_t threads[num_threads];
-    ThreadData t_args[num_threads];
+    struct timespec ts_inicio, ts_fim; //timespec para medir tempo real de parede
+    clock_gettime(CLOCK_MONOTONIC, &ts_inicio); 
+    pthread_t *threads = malloc(num_threads * sizeof(pthread_t)); 
+    ThreadData *t_args = malloc(num_threads * sizeof(ThreadData)); 
     pthread_mutex_init(&lock, NULL);
 
-    int chunk = total_linhas / num_threads;
+    int chunk = (total_linhas + num_threads - 1) / num_threads; 
     for (int i = 0; i < num_threads; i++) {
         t_args[i].leituras = leituras;
         t_args[i].inicio = i * chunk;
@@ -188,9 +202,11 @@ int main(int argc, char *argv[]) {
 
     pthread_mutex_destroy(&lock);
     free(leituras);
+    free(threads);
+    free(t_args);
     
-    clock_t fim_proc = clock();
-    printf("Tempo de execução: %.2f segundos\n", (double)(fim_proc - inicio_proc) / CLOCKS_PER_SEC);
+    clock_gettime(CLOCK_MONOTONIC, &ts_fim); // clock() substituido por clock_gettime
+    printf("Tempo de execução: %.2f segundos\n", (ts_fim.tv_sec - ts_inicio.tv_sec) + (ts_fim.tv_nsec - ts_inicio.tv_nsec) / 1e9); //corrigido: calculo usando timespec no lugar de clock_t
 
     return 0;
 }
