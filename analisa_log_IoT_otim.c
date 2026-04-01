@@ -105,7 +105,7 @@ static int get_local_sensor_index(EstatSensor *tab, int *total, const char *id) 
 
 void *processar_leituras(void *arg) {
 	ThreadData *data = (ThreadData *)arg;
-	ResultadoFase1 *res = malloc(sizeof(Resultadofase1));
+	ResultadosFase1 *res = malloc(sizeof(ResultadosFase1));
 	if (!res) { perror("malloc"); pthread_exit(NULL); }
 	
 	res->alertas = 0;
@@ -130,7 +130,7 @@ void *processar_leituras(void *arg) {
 											&res->total_sensores,
 											l->sensor_id);
 			if (idx != -1) {
-				res-sensores[idx].soma += l->valor;
+				res->sensores[idx].soma += l->valor;
 				res->sensores[idx].count += 1;
 			}
 		}
@@ -138,7 +138,7 @@ void *processar_leituras(void *arg) {
 	return (void *)res;
 }
 
-static void reduzir_fase1(ResultadoFase1 **partes, int n,
+static void reduzir_fase1(ResultadosFase1 **partes, int n,
 						int *alertas_out, double *energia_out) {
 	int alertas = 0;
 	double soma_energia = 0.0;
@@ -152,11 +152,11 @@ static void reduzir_fase1(ResultadoFase1 **partes, int n,
 			
 			int idx = -1;
 			for (int g = 0; g < total_sensores; g++) {
-				if (strcmp(sensores[g].id, loc->id) == 0) { idx = g; break }
+				if (strcmp(sensores[g].id, loc->id) == 0) { idx = g; break; }
 			}
 			if (idx == -1 && total_sensores < MAX_SENSORES) {
 				idx = total_sensores++;
-				strcnpy(sensores[idx].id, loc->id, MAX_SENSOR_ID - 1);
+				strncpy(sensores[idx].id, loc->id, MAX_SENSOR_ID - 1);
 				sensores[idx].id[MAX_SENSOR_ID -1] = '\0';
 				sensores[idx].soma = 0.0;
 				sensores[idx].soma_quad = 0.0;
@@ -223,7 +223,8 @@ int main(int argc, char *argv[]) {
 	
 	int total_linhas = 0;
 	Leitura *leituras = ler_arquivo(nome_arquivo, &total_linhas);
-	printf("Total de linhas lidas: %d\n", total_linhas);
+    printf("\n-----VERSÃO PARALELA OTIMIZADA-----\n\n");
+    printf("Total de linhas lidas: %d\n", total_linhas);
 	
 	struct timespec ts_inicio, ts_fim;
 	clock_gettime(CLOCK_MONOTONIC, &ts_inicio);
@@ -245,7 +246,7 @@ int main(int argc, char *argv[]) {
 		pthread_create(&threads[i], NULL, processar_leituras, &t_args[i]);
 	}
 	
-	ResultadoFase1 **res1 = malloc(num_threads * sizeof(ResultadoFase1 *));
+	ResultadosFase1 **res1 = malloc(num_threads * sizeof(ResultadosFase1 *));
 	if (!res1) { perror("malloc"); return 1; }
 	
 	for (int i = 0; i < num_threads; i++) {
@@ -288,8 +289,8 @@ int main(int argc, char *argv[]) {
 			double desvio = sqrt(sensores[i].soma_quad / (sensores[i].count - 1));
 			if (desvio > maior_desvio) {
 				maior_desvio = desvio;
-				strcnpy(sensor_instavel, sensores[i].id, MAX_SENSOR_ID - 1);
-				sensor_instavel[MAX_SENSORE_ID - 1] = '\0';
+				strncpy(sensor_instavel, sensores[i].id, MAX_SENSOR_ID - 1);
+				sensor_instavel[MAX_SENSOR_ID - 1] = '\0';
 			}
 		}
 	}
@@ -311,7 +312,7 @@ int main(int argc, char *argv[]) {
 	
 	clock_gettime(CLOCK_MONOTONIC, &ts_fim);
 	double elapsed = (ts_fim.tv_sec - ts_inicio.tv_sec) +
-					(ts_fim.tv_sec - ts_inicio.tv_nsec) / 1e9;
+					(ts_fim.tv_nsec - ts_inicio.tv_nsec) / 1e9;
 	printf("\nTempo de execucao: %.4f segunds\n", elapsed);
 	
 	return 0;
