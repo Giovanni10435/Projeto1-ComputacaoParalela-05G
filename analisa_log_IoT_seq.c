@@ -98,7 +98,6 @@ int get_sensor_index(char *id) {
 
 int main(int argc, char *argv[]) {
 
-    clock_t inicio = clock();
     double soma_temp = 0;
     double soma_quad = 0;
     int count_temp = 0;
@@ -115,8 +114,11 @@ int main(int argc, char *argv[]) {
 
     // Leitura do arquivo
     Leitura *leituras = ler_arquivo(argv[1], &total_linhas);
+    printf("\n-----VERSÃO SEQUENCIAL-----\n\n");
 
     printf("Total de linhas lidas: %d\n", total_linhas);
+
+    clock_t inicio = clock(); 
 
     
 
